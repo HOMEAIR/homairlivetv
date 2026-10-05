@@ -8,16 +8,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.ui.viewinterop.AndroidView
-import android.widget.FrameLayout
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,78 +22,303 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
+import com.homeair.live.data.Channel
+import com.homeair.live.playback.PlaybackFactory
 
-data class Channel(val number:Int,val name:String,val url:String,val group:String="Live")
-private val demoChannels=listOf(
- Channel(1,"Home Air Live Demo","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"),
- Channel(2,"News Demo","https://test-streams.mux.dev/test_001/stream.m3u8"),
- Channel(3,"Sports Demo","https://test-streams.mux.dev/bbb-abr/bbb-abr.m3u8")
-)
-
-class MainActivity:ComponentActivity(){
- override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);enableEdgeToEdge();setContent{HomeAirLiveApp()}}
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent { HomeAirLiveApp() }
+    }
 }
-@Composable fun HomeAirLiveApp(){
- var mode by remember{mutableStateOf<String?>(null)};var selected by remember{mutableIntStateOf(0)}
- if(mode==null)ModeChooser{mode=it}else if(mode=="TV")TvScreen(demoChannels,selected){selected=it}else MobileScreen(demoChannels,selected){selected=it}
-}
-@Composable fun BrandLogo(modifier:Modifier=Modifier){Box(modifier.background(Color(0xFFFF7A00),RoundedCornerShape(14.dp)),contentAlignment=Alignment.Center){Text("▶",color=Color.White,fontSize=30.sp,fontWeight=FontWeight.Bold)}}
-@Composable fun ModeChooser(onChoose:(String)->Unit){
- Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFFFF7A00),Color.White)))){
-  Column(Modifier.align(Alignment.Center).padding(32.dp),horizontalAlignment=Alignment.CenterHorizontally){
-   BrandLogo(Modifier.size(72.dp));Spacer(Modifier.height(18.dp));Text("Home Air Live",fontSize=34.sp,fontWeight=FontWeight.Bold,color=Color(0xFF17171A));Text("Choose your viewing mode",color=Color.DarkGray);Spacer(Modifier.height(28.dp))
-   Row(horizontalArrangement=Arrangement.spacedBy(18.dp)){ModeCard("TV MODE","Full-screen live TV",onChoose);ModeCard("MOBILE MODE","Dashboard & touch",onChoose)}
-  }
- }
-}
-@Composable fun ModeCard(title:String,subtitle:String,onChoose:(String)->Unit){
- val key=if(title.startsWith("TV"))"TV" else "MOBILE"
- Card(Modifier.width(260.dp).height(150.dp).clickable{onChoose(key)}.focusable()){Column(Modifier.padding(22.dp),verticalArrangement=Arrangement.Center){Text(title,fontWeight=FontWeight.Bold,fontSize=21.sp,color=Color(0xFFF45100));Spacer(Modifier.height(8.dp));Text(subtitle,color=Color.DarkGray)}}
-}
-@Composable fun TvScreen(channels:List<Channel>,current:Int,onSelect:(Int)->Unit){
- var sidebar by remember{mutableStateOf(false)};var number by remember{mutableStateOf("")};val focus=remember{FocusRequester()}
- Box(Modifier.fillMaxSize().background(Color.Black).onPreviewKeyEvent{
-  if(it.type!=androidx.compose.ui.input.key.KeyEventType.KeyDown)return@onPreviewKeyEvent false
-  when(it.nativeKeyEvent.keyCode){
-   KeyEvent.KEYCODE_DPAD_LEFT->{sidebar=true;true};KeyEvent.KEYCODE_BACK->{if(sidebar){sidebar=false;true}else false}
-   KeyEvent.KEYCODE_PAGE_UP,KeyEvent.KEYCODE_CHANNEL_UP,KeyEvent.KEYCODE_DPAD_UP->{onSelect((current-1+channels.size)%channels.size);true}
-   KeyEvent.KEYCODE_PAGE_DOWN,KeyEvent.KEYCODE_CHANNEL_DOWN,KeyEvent.KEYCODE_DPAD_DOWN->{onSelect((current+1)%channels.size);true}
-   KeyEvent.KEYCODE_0,KeyEvent.KEYCODE_1,KeyEvent.KEYCODE_2,KeyEvent.KEYCODE_3,KeyEvent.KEYCODE_4,KeyEvent.KEYCODE_5,KeyEvent.KEYCODE_6,KeyEvent.KEYCODE_7,KeyEvent.KEYCODE_8,KeyEvent.KEYCODE_9->{number+=(it.nativeKeyEvent.keyCode-KeyEvent.KEYCODE_0).toString();true}
-   KeyEvent.KEYCODE_ENTER,KeyEvent.KEYCODE_DPAD_CENTER->{val n=number.toIntOrNull();val idx=channels.indexOfFirst{it.number==n};if(idx>=0)onSelect(idx);number="";true};else->false
-  }
- }.focusRequester(focus).focusable()){
-  LiveVideoPlayer(channels[current].url, Modifier.fillMaxSize())
-  Text("LIVE  "+channels[current].name,color=Color.White,fontSize=20.sp,modifier=Modifier.align(Alignment.TopStart).padding(24.dp));Text(channels[current].name,color=Color.White,fontSize=28.sp,fontWeight=FontWeight.Bold,modifier=Modifier.align(Alignment.BottomStart).padding(28.dp))
-  if(number.isNotEmpty())Text(number,color=Color.White,fontSize=42.sp,fontWeight=FontWeight.Bold,modifier=Modifier.align(Alignment.Center));if(sidebar)ChannelSidebar(channels,current){onSelect(it);sidebar=false}
- }
- LaunchedEffect(Unit){focus.requestFocus()}
-}
-@Composable fun ChannelSidebar(channels:List<Channel>,current:Int,onSelect:(Int)->Unit){
- Surface(Modifier.fillMaxHeight().width(380.dp),color=Color(0xF218181A)){Column(Modifier.padding(18.dp)){Row(verticalAlignment=Alignment.CenterVertically){BrandLogo(Modifier.size(48.dp));Spacer(Modifier.width(12.dp));Text("Channels",color=Color.White,fontSize=24.sp,fontWeight=FontWeight.Bold)};Spacer(Modifier.height(16.dp));LazyColumn(verticalArrangement=Arrangement.spacedBy(6.dp)){items(channels){c->val i=channels.indexOf(c);Row(Modifier.fillMaxWidth().background(if(i==current)Color(0xFFFF7A00)else Color.Transparent,RoundedCornerShape(10.dp)).clickable{onSelect(i)}.padding(14.dp),verticalAlignment=Alignment.CenterVertically){Text(c.number.toString(),color=Color.White,fontWeight=FontWeight.Bold,modifier=Modifier.width(45.dp));Text(c.name,color=Color.White,fontSize=18.sp)}}}}}
-}
-@Composable fun MobileScreen(channels:List<Channel>,current:Int,onSelect:(Int)->Unit){
- var showPlayer by remember{mutableStateOf(false)}
- if(showPlayer)Box(Modifier.fillMaxSize().background(Color.Black)){Text("LIVE  "+channels[current].name,color=Color.White,fontSize=22.sp,modifier=Modifier.align(Alignment.TopStart).padding(20.dp));Text("Swipe up/down to change channel",color=Color.White,modifier=Modifier.align(Alignment.BottomCenter).padding(24.dp))}
- else Column(Modifier.fillMaxSize().background(Color(0xFF0E0E10)).padding(20.dp)){Row(verticalAlignment=Alignment.CenterVertically){BrandLogo(Modifier.size(52.dp));Spacer(Modifier.width(12.dp));Text("Home Air Live",color=Color.White,fontSize=27.sp,fontWeight=FontWeight.Bold)};Spacer(Modifier.height(24.dp));Text("Live TV",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.height(12.dp));LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)){items(channels){c->Card(Modifier.fillMaxWidth().clickable{onSelect(channels.indexOf(c));showPlayer=true}){Text(c.number.toString()+"  "+c.name,Modifier.padding(20.dp),fontSize=18.sp)}}}}
-}
-
 
 @Composable
-fun LiveVideoPlayer(url:String, modifier:Modifier=Modifier){
- AndroidView(modifier=modifier, factory={context->
-  PlayerView(context).apply{
-   useController=false
-   player=ExoPlayer.Builder(context).build().also{p->
-    p.setMediaItem(MediaItem.fromUri(url))
-    p.prepare()
-    p.playWhenReady=true
-   }
-  }
- }, update={view->view.player?.let{p->
-   val current=p.currentMediaItem?.localConfiguration?.uri?.toString()
-   if(current!=url){p.setMediaItem(MediaItem.fromUri(url));p.prepare();p.playWhenReady=true}
- }})
+fun HomeAirLiveApp(vm: HomeAirViewModel = viewModel()) {
+    val mode by vm.mode.collectAsState()
+    val channels by vm.channels.collectAsState()
+    val error by vm.playlistError.collectAsState()
+    val token by vm.token.collectAsState()
+    val tokenHeader by vm.tokenHeader.collectAsState()
+    var selected by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(channels) {
+        if (channels.isNotEmpty()) selected = selected.coerceIn(0, channels.lastIndex)
+    }
+
+    when {
+        mode == null -> ModeChooser { vm.chooseMode(it) }
+        mode == "TV" -> TvScreen(
+            channels = channels,
+            current = selected,
+            token = token,
+            tokenHeader = tokenHeader,
+            error = error,
+            onSelect = { selected = it },
+            onMode = { vm.chooseMode(it) },
+            onRefresh = vm::loadPlaylist
+        )
+        else -> MobileScreen(
+            channels = channels,
+            current = selected,
+            token = token,
+            tokenHeader = tokenHeader,
+            error = error,
+            onSelect = { selected = it },
+            onMode = { vm.chooseMode(it) },
+            onRefresh = vm::loadPlaylist
+        )
+    }
+}
+
+@Composable
+fun BrandLogo(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .background(Color(0xFFFF7A00), RoundedCornerShape(14.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("▶", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+        Text("—", color = Color(0xFFFFD54A), fontSize = 26.sp, modifier = Modifier.offset(x = 19.dp))
+    }
+}
+
+@Composable
+fun ModeChooser(onChoose: (String) -> Unit) {
+    Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFFFF7A00), Color.White)))) {
+        Column(
+            Modifier.align(Alignment.Center).padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            BrandLogo(Modifier.size(84.dp))
+            Spacer(Modifier.height(18.dp))
+            Text("Home Air Live", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color(0xFF17171A))
+            Text("Choose your viewing mode", color = Color.DarkGray)
+            Spacer(Modifier.height(28.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                ModeCard("TV MODE", "Full-screen live TV", onChoose)
+                ModeCard("MOBILE MODE", "Dashboard & touch", onChoose)
+            }
+        }
+    }
+}
+
+@Composable
+fun ModeCard(title: String, subtitle: String, onChoose: (String) -> Unit) {
+    val key = if (title.startsWith("TV")) "TV" else "MOBILE"
+    Card(
+        Modifier.width(280.dp).height(160.dp).clickable { onChoose(key) }.focusable(),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = .94f))
+    ) {
+        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.Center) {
+            Text(title, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color(0xFFF45100))
+            Spacer(Modifier.height(8.dp))
+            Text(subtitle, color = Color.DarkGray)
+        }
+    }
+}
+
+@Composable
+fun TvScreen(
+    channels: List<Channel>,
+    current: Int,
+    token: String,
+    tokenHeader: String,
+    error: String?,
+    onSelect: (Int) -> Unit,
+    onMode: (String) -> Unit,
+    onRefresh: () -> Unit
+) {
+    var sidebar by remember { mutableStateOf(false) }
+    var number by remember { mutableStateOf("") }
+    val focus = remember { FocusRequester() }
+
+    Box(
+        Modifier.fillMaxSize()
+            .background(Color.Black)
+            .onPreviewKeyEvent {
+                if (it.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (it.nativeKeyEvent.keyCode) {
+                    KeyEvent.KEYCODE_DPAD_LEFT -> { sidebar = true; true }
+                    KeyEvent.KEYCODE_BACK -> if (sidebar) { sidebar = false; true } else false
+                    KeyEvent.KEYCODE_PAGE_UP, KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_DPAD_UP -> {
+                        if (channels.isNotEmpty()) onSelect((current - 1 + channels.size) % channels.size); true
+                    }
+                    KeyEvent.KEYCODE_PAGE_DOWN, KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        if (channels.isNotEmpty()) onSelect((current + 1) % channels.size); true
+                    }
+                    in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> {
+                        val digit = it.nativeKeyEvent.keyCode - KeyEvent.KEYCODE_0
+                        if (number.length < 4) number += digit.toString()
+                        true
+                    }
+                    KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_DPAD_CENTER -> {
+                        val idx = channels.indexOfFirst { it.number == number.toIntOrNull() }
+                        if (idx >= 0) onSelect(idx)
+                        number = ""
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .focusRequester(focus)
+            .focusable()
+    ) {
+        if (channels.isNotEmpty()) {
+            LiveVideoPlayer(channels[current], tokenHeader, token, Modifier.fillMaxSize())
+            Text("LIVE  " + channels[current].name, color = Color.White, fontSize = 20.sp, modifier = Modifier.align(Alignment.TopStart).padding(24.dp))
+            Text(channels[current].name, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomStart).padding(28.dp))
+        } else {
+            EmptyTvState(error, onRefresh)
+        }
+        if (number.isNotEmpty()) {
+            Surface(Modifier.align(Alignment.Center), color = Color.Black.copy(alpha = .72f), shape = RoundedCornerShape(12.dp)) {
+                Text(number, color = Color.White, fontSize = 42.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 28.dp, vertical = 14.dp))
+            }
+        }
+        if (sidebar) {
+            ChannelSidebar(channels, current, onSelect = { onSelect(it); sidebar = false }, onRefresh = onRefresh, onMode = { onMode("MOBILE") })
+        }
+    }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+}
+
+@Composable
+fun EmptyTvState(error: String?, onRefresh: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(Color(0xFF0E0E10)), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        BrandLogo(Modifier.size(76.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(error ?: "No live channels configured", color = Color.White, fontSize = 22.sp)
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = onRefresh) { Text("REFRESH") }
+        Text("Configure your playlist in the app settings/backend configuration.", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(20.dp))
+    }
+}
+
+@Composable
+fun ChannelSidebar(
+    channels: List<Channel>,
+    current: Int,
+    onSelect: (Int) -> Unit,
+    onRefresh: () -> Unit,
+    onMode: () -> Unit
+) {
+    Surface(Modifier.fillMaxHeight().width(400.dp), color = Color(0xF218181A)) {
+        Column(Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BrandLogo(Modifier.size(50.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Channels", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(12.dp))
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(channels, key = { it.id }) { c ->
+                    val i = channels.indexOf(c)
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .background(if (i == current) Color(0xFFFF7A00) else Color.Transparent, RoundedCornerShape(10.dp))
+                            .clickable { onSelect(i) }
+                            .focusable()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(c.number.toString(), color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.width(48.dp))
+                        Text(c.name, color = Color.White, fontSize = 18.sp)
+                    }
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) { Text("REFRESH PLAYLIST") }
+            TextButton(onClick = onMode) { Text("MOBILE MODE") }
+        }
+    }
+}
+
+@Composable
+fun MobileScreen(
+    channels: List<Channel>,
+    current: Int,
+    token: String,
+    tokenHeader: String,
+    error: String?,
+    onSelect: (Int) -> Unit,
+    onMode: (String) -> Unit,
+    onRefresh: () -> Unit
+) {
+    var showPlayer by remember { mutableStateOf(false) }
+    var dragTotal by remember { mutableFloatStateOf(0f) }
+
+    if (showPlayer && channels.isNotEmpty()) {
+        Box(
+            Modifier.fillMaxSize().background(Color.Black)
+                .pointerInput(channels.size, current) {
+                    detectVerticalDragGestures(
+                        onVerticalDrag = { change, dragAmount ->
+                            change.consume()
+                            dragTotal += dragAmount
+                        },
+                        onDragEnd = {
+                            when {
+                                dragTotal < -120f -> onSelect((current + 1) % channels.size)
+                                dragTotal > 120f -> onSelect((current - 1 + channels.size) % channels.size)
+                            }
+                            dragTotal = 0f
+                        }
+                    )
+                }
+        ) {
+            LiveVideoPlayer(channels[current], tokenHeader, token, Modifier.fillMaxSize())
+            Text("LIVE  " + channels[current].name, color = Color.White, fontSize = 20.sp, modifier = Modifier.align(Alignment.TopStart).padding(20.dp))
+            Text("Swipe ↑ / ↓  •  Tap system back to return", color = Color.White, modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp))
+        }
+    } else {
+        Column(Modifier.fillMaxSize().background(Color(0xFF0E0E10)).padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BrandLogo(Modifier.size(52.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("Home Air Live", color = Color.White, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(22.dp))
+            Text("Live TV", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(12.dp))
+            if (error != null) Text(error, color = Color(0xFFFFC107), fontSize = 14.sp)
+            Spacer(Modifier.height(8.dp))
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(channels, key = { it.id }) { c ->
+                    Card(Modifier.fillMaxWidth().clickable { onSelect(channels.indexOf(c)); showPlayer = true }) {
+                        Text(c.number.toString() + "  " + c.name, Modifier.padding(20.dp), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = onRefresh) { Text("REFRESH") }
+                OutlinedButton(onClick = { onMode("TV") }) { Text("TV MODE") }
+            }
+        }
+    }
+}
+
+@Composable
+fun LiveVideoPlayer(channel: Channel, tokenHeader: String, token: String, modifier: Modifier = Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val player = remember(channel.id, tokenHeader, token) {
+        PlaybackFactory(context.applicationContext).create(channel, tokenHeader, token)
+    }
+    DisposableEffect(player) {
+        onDispose { player.release() }
+    }
+    AndroidView(
+        modifier = modifier,
+        factory = { PlayerView(it).apply { useController = false } },
+        update = { it.player = player }
+    )
 }
