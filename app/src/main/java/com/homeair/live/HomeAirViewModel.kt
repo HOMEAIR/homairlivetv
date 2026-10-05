@@ -36,6 +36,12 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
     private val _tokenHeader = MutableStateFlow("Authorization: Bearer")
     val tokenHeader: StateFlow<String> = _tokenHeader.asStateFlow()
 
+    val lastChannelId: StateFlow<String?> = preferences.lastChannelId.run {
+        MutableStateFlow<String?>(null).also { target ->
+            viewModelScope.launch { collect { target.value = it } }
+        }.asStateFlow()
+    }
+
     val favorites: StateFlow<Set<String>> = preferences.favorites.run {
         MutableStateFlow(emptySet<String>()).also { target ->
             viewModelScope.launch { collect { target.value = it } }
