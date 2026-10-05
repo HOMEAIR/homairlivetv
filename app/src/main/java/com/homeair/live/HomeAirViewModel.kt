@@ -30,6 +30,9 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
     private val _token = MutableStateFlow(tokenStore.read())
     val token: StateFlow<String> = _token.asStateFlow()
 
+    private val _playlistUrl = MutableStateFlow("")
+    val playlistUrl: StateFlow<String> = _playlistUrl.asStateFlow()
+
     private val _tokenHeader = MutableStateFlow("Authorization: Bearer")
     val tokenHeader: StateFlow<String> = _tokenHeader.asStateFlow()
 
@@ -42,6 +45,7 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             _mode.value = preferences.mode.firstOrNull()
+            _playlistUrl.value = preferences.getPlaylistUrl()
             _tokenHeader.value = preferences.getTokenHeader()
             loadPlaylist()
         }
@@ -58,6 +62,7 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
         _tokenHeader.value = header.ifBlank { "Authorization: Bearer" }
         viewModelScope.launch {
             preferences.setPlaylist(url, _tokenHeader.value)
+            _playlistUrl.value = url.trim()
             loadPlaylist()
         }
     }
