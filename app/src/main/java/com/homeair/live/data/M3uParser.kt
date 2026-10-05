@@ -47,6 +47,6 @@ object M3uParser {
             metadataLine = null
             displayName = null
         }
-        return result.distinctBy { it.url }.sortedBy { it.number }
+        return result.distinctBy { it.url }
     }
 }
