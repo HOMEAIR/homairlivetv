@@ -8,6 +8,7 @@ import com.homeair.live.data.Channel
 import com.homeair.live.data.PlaylistRepository
 import com.homeair.live.security.SecureTokenStore
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
