@@ -35,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -98,8 +100,8 @@ fun TvChannelSidebar(
                 BrandMiniLogo()
                 Spacer(Modifier.width(12.dp))
                 Column {
-                    Text("Live Channels", color = Color.White, fontSize = androidx.compose.ui.unit.sp(25f), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                    Text("${filtered.size} channels", color = Color.White.copy(alpha = .62f), fontSize = androidx.compose.ui.unit.sp(12f))
+                    Text("Live Channels", color = Color.White, fontSize = 25.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text("${filtered.size} channels", color = Color.White.copy(alpha = .62f), fontSize = 12.sp)
                 }
             }
 
@@ -204,12 +206,12 @@ private fun ChannelSidebarRow(
         Spacer(Modifier.width(10.dp))
         Text(channel.number.toString(), color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, modifier = Modifier.width(42.dp))
         Column(Modifier.weight(1f)) {
-            Text(channel.name, color = Color.White, fontSize = androidx.compose.ui.unit.sp(16f), maxLines = 1)
-            Text(channel.group, color = Color.White.copy(alpha = .60f), fontSize = androidx.compose.ui.unit.sp(11f), maxLines = 1)
+            Text(channel.name, color = Color.White, fontSize = 16.sp, maxLines = 1)
+            Text(channel.group, color = Color.White.copy(alpha = .60f), fontSize = 11.sp, maxLines = 1)
         }
         Text(if (favorite) "★" else "☆",
             color = if (favorite) Color(0xFFFFD54A) else Color.White,
-            fontSize = androidx.compose.ui.unit.sp(21f),
+            fontSize = 21.sp,
             modifier = Modifier.clickable(onClick = onFavorite))
     }
 }
@@ -220,6 +222,6 @@ private fun BrandMiniLogo() {
         Modifier.width(50.dp).height(50.dp).background(Color(0xFFFF7A00), RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center
     ) {
-        Text("▶", color = Color.White, fontSize = androidx.compose.ui.unit.sp(22f), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+        Text("▶", color = Color.White, fontSize = 22.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
     }
 }
