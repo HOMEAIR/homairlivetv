@@ -5,6 +5,8 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -27,8 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.homeair.live.data.Channel
 import com.homeair.live.playback.PlaybackFactory
@@ -37,12 +37,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { HomeAirLiveApp() }
+        homeAirVm = androidx.lifecycle.ViewModelProvider(this)[HomeAirViewModel::class.java]
+        setContent { HomeAirLiveApp(homeAirVm) }
     }
 }
 
 @Composable
-fun HomeAirLiveApp(vm: HomeAirViewModel = viewModel()) {
+fun HomeAirLiveApp(vm: HomeAirViewModel) {
     val mode by vm.mode.collectAsState()
     val channels by vm.channels.collectAsState()
     val error by vm.playlistError.collectAsState()
@@ -108,20 +109,16 @@ fun BrandLogo(modifier: Modifier = Modifier) {
             val cx = size.width / 2f
             val cy = size.height / 2f
             val radius = size.minDimension * .30f
-            drawContext.canvas.save()
-            drawContext.canvas.rotate(triangleRotation, cx, cy)
             val path = androidx.compose.ui.graphics.Path().apply {
                 moveTo(cx + radius, cy)
                 lineTo(cx - radius * .7f, cy - radius * .85f)
                 lineTo(cx - radius * .7f, cy + radius * .85f)
                 close()
             }
-            drawPath(path, color = Color.White)
-            drawContext.canvas.restore()
-            drawContext.canvas.save()
-            drawContext.canvas.rotate(signalRotation, cx, cy)
-            drawLine(Color(0xFFFFD54A), start = androidx.compose.ui.geometry.Offset(cx - radius * .95f, cy + radius * .65f), end = androidx.compose.ui.geometry.Offset(cx + radius * .95f, cy - radius * .65f), strokeWidth = size.minDimension * .055f)
-            drawContext.canvas.restore()
+            androidx.compose.ui.graphics.drawscope.rotate(triangleRotation, androidx.compose.ui.geometry.Offset(cx, cy)) { drawPath(path, color = Color.White) }
+            androidx.compose.ui.graphics.drawscope.rotate(signalRotation, androidx.compose.ui.geometry.Offset(cx, cy)) {
+                drawLine(Color(0xFFFFD54A), start = androidx.compose.ui.geometry.Offset(cx - radius * .95f, cy + radius * .65f), end = androidx.compose.ui.geometry.Offset(cx + radius * .95f, cy - radius * .65f), strokeWidth = size.minDimension * .055f)
+            }
         }
     }
 }
@@ -183,7 +180,7 @@ fun TvScreen(
         Modifier.fillMaxSize()
             .background(Color.Black)
             .onPreviewKeyEvent {
-                if (it.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (it.nativeKeyEvent.action != KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
                 when (it.nativeKeyEvent.keyCode) {
                     KeyEvent.KEYCODE_DPAD_LEFT -> { sidebar = true; true }
                     KeyEvent.KEYCODE_BACK -> if (sidebar) { sidebar = false; true } else false
