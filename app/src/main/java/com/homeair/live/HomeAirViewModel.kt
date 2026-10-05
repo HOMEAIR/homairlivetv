@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
     private val preferences = AppPreferences(app)
     private val tokenStore = SecureTokenStore(app)
-    private val repository = PlaylistRepository(preferences, tokenStore)
+    private val repository = PlaylistRepository()
 
     private val _mode = MutableStateFlow<String?>(null)
     val mode: StateFlow<String?> = _mode.asStateFlow()
@@ -51,7 +51,7 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
     init {
         viewModelScope.launch {
             _mode.value = preferences.mode.firstOrNull()
-            _playlistUrl.value = preferences.getPlaylistUrl()
+            _playlistUrl.value = com.homeair.live.network.WorkerConfig.proxyUrl
             _tokenHeader.value = preferences.getTokenHeader()
             loadPlaylist()
         }
@@ -67,8 +67,7 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
         _token.value = tokenStore.read()
         _tokenHeader.value = header.ifBlank { "Authorization: Bearer" }
         viewModelScope.launch {
-            preferences.setPlaylist(url, _tokenHeader.value)
-            _playlistUrl.value = url.trim()
+            _playlistUrl.value = com.homeair.live.network.WorkerConfig.proxyUrl
             loadPlaylist()
         }
     }
@@ -83,12 +82,6 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
 
     fun loadPlaylist() {
         viewModelScope.launch {
-            val url = preferences.getPlaylistUrl()
-            if (url.isBlank()) {
-                _channels.value = emptyList()
-                _playlistError.value = null
-                return@launch
-            }
             repository.load().fold(
                 onSuccess = {
                     _channels.value = it
