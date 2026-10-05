@@ -18,7 +18,7 @@ class AppPreferences(private val context: Context) {
     private val headerKey = stringPreferencesKey("token_header")
     private val lastChannelKey = stringPreferencesKey("last_channel_id")
     private val favoritesKey = stringSetPreferencesKey("favorites")
-    private val recentKey = stringSetPreferencesKey("recent")
+    private val recentKey = stringPreferencesKey("recent_ordered")
     private val setupDoneKey = booleanPreferencesKey("setup_done")
 
     val mode: Flow<String?> = context.dataStore.data.map { it[modeKey] }
@@ -27,7 +27,9 @@ class AppPreferences(private val context: Context) {
     val lastChannelId: Flow<String?> = context.dataStore.data.map { it[lastChannelKey] }
     val setupDone: Flow<Boolean> = context.dataStore.data.map { it[setupDoneKey] ?: false }
     val favorites: Flow<Set<String>> = context.dataStore.data.map { it[favoritesKey] ?: emptySet() }
-    val recent: Flow<List<String>> = context.dataStore.data.map { (it[recentKey] ?: emptySet()).toList() }
+    val recent: Flow<List<String>> = context.dataStore.data.map {
+        it[recentKey].orEmpty().split("|").filter(String::isNotBlank)
+    }
 
     suspend fun setMode(value: String) = context.dataStore.edit { it[modeKey] = value }
     suspend fun setPlaylist(url: String, header: String) = context.dataStore.edit {
@@ -46,9 +48,9 @@ class AppPreferences(private val context: Context) {
     }
 
     suspend fun addRecent(id: String) = context.dataStore.edit {
-        val current = (it[recentKey] ?: emptySet()).toMutableList()
-        current.remove(id)
-        current.add(0, id)
-        it[recentKey] = current.take(20).toSet()
+        val old = it[recentKey].orEmpty().split("|").filter(String::isNotBlank).toMutableList()
+        old.remove(id)
+        old.add(0, id)
+        it[recentKey] = old.take(20).joinToString("|")
     }
 }
