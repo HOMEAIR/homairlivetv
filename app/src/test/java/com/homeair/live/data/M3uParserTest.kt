@@ -15,9 +15,7 @@ class M3uParserTest {
             #EXTINF:-1 group-title="Sports",Sports Channel
             http://example.com/sports.ts
         """.trimIndent()
-
         val channels = M3uParser.parse(text)
-
         assertEquals(2, channels.size)
         assertEquals(101, channels[0].number)
         assertEquals("News One", channels[0].name)
@@ -35,7 +33,6 @@ class M3uParserTest {
             #EXTINF:-1 tvg-id="same1",Two
             https://example.com/live.m3u8
         """.trimIndent()
-
         assertEquals(1, M3uParser.parse(text).size)
     }
 }
