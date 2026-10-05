@@ -192,7 +192,7 @@ fun TvScreen(
             }
         }
         if (sidebar) {
-            ChannelSidebar(channels, current, onSelect = { onSelect(it); sidebar = false }, onRefresh = onRefresh, onMode = { onMode("MOBILE") })
+            ChannelSidebar(channels, current, onSelect = { onSelect(it); sidebar = false }, onRefresh = onRefresh, onMode = { onMode("MOBILE") }, onSettings = onSettings)
         }
     }
     LaunchedEffect(Unit) { focus.requestFocus() }
