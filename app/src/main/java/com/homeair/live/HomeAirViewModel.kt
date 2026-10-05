@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.homeair.live.data.AppPreferences
 import com.homeair.live.data.Channel
+import com.homeair.live.data.EpgRepository
+import com.homeair.live.data.EpgSchedule
 import com.homeair.live.data.PlaylistRepository
 import com.homeair.live.security.SecureTokenStore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +18,8 @@ import kotlinx.coroutines.launch
 class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
     private val preferences = AppPreferences(app)
     private val tokenStore = SecureTokenStore(app)
-    private val repository = PlaylistRepository()
+    private val playlistRepository = PlaylistRepository()
+    private val epgRepository = EpgRepository()
 
     private val _mode = MutableStateFlow<String?>(null)
     val mode: StateFlow<String?> = _mode.asStateFlow()
@@ -26,6 +29,12 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _playlistError = MutableStateFlow<String?>(null)
     val playlistError: StateFlow<String?> = _playlistError.asStateFlow()
+
+    private val _epg = MutableStateFlow<EpgSchedule?>(null)
+    val epg: StateFlow<EpgSchedule?> = _epg.asStateFlow()
+
+    private val _epgError = MutableStateFlow<String?>(null)
+    val epgError: StateFlow<String?> = _epgError.asStateFlow()
 
     private val _token = MutableStateFlow(tokenStore.read())
     val token: StateFlow<String> = _token.asStateFlow()
@@ -77,19 +86,38 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun recordRecent(id: String) {
-        viewModelScope.launch { preferences.addRecent(id); preferences.setLastChannel(id) }
+        viewModelScope.launch {
+            preferences.addRecent(id)
+            preferences.setLastChannel(id)
+        }
     }
 
     fun loadPlaylist() {
         viewModelScope.launch {
-            repository.load().fold(
-                onSuccess = {
-                    _channels.value = it
-                    _playlistError.value = if (it.isEmpty()) "Playlist loaded but contains no valid channels." else null
+            playlistRepository.load().fold(
+                onSuccess = { playlist ->
+                    _channels.value = playlist.channels
+                    _playlistError.value =
+                        if (playlist.channels.isEmpty()) "Playlist loaded but contains no valid channels." else null
+                    _epg.value = null
+                    _epgError.value = null
+
+                    playlist.epgUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                        loadEpg(url)
+                    }
                 },
                 onFailure = {
                     _playlistError.value = it.message ?: "Unable to load playlist."
                 }
+            )
+        }
+    }
+
+    private fun loadEpg(url: String) {
+        viewModelScope.launch {
+            epgRepository.fetch(url).fold(
+                onSuccess = { _epg.value = it },
+                onFailure = { _epgError.value = it.message ?: "EPG unavailable." }
             )
         }
     }
