@@ -1,6 +1,6 @@
 package com.homeair.live.data
 
-private val attrRegex = Regex("""([A-Za-z0-9_-]+)="([^"]*)"""")
+private val attrRegex = Regex("([A-Za-z0-9_-]+)=\"([^\"]*)\"")
 
 object M3uParser {
     fun parse(text: String): List<Channel> {
@@ -19,7 +19,9 @@ object M3uParser {
                 }
                 line.isNotEmpty() && !line.startsWith("#") -> {
                     val name = pending["tvg-name"] ?: pendingName ?: "Channel $generated"
-                    val number = pending["channel-number"]?.toIntOrNull() ?: pending["tvg-chno"]?.toIntOrNull() ?: generated
+                    val number = pending["channel-number"]?.toIntOrNull()
+                        ?: pending["tvg-chno"]?.toIntOrNull()
+                        ?: generated
                     result += Channel(
                         number = number,
                         id = pending["tvg-id"]?.ifBlank { null } ?: "channel-${number}-${result.size}",
@@ -38,8 +40,9 @@ object M3uParser {
                 }
             }
         }
-        return result.filter { it.url.startsWith("http://") || it.url.startsWith("https://") }
-            .distinctBy { it.id }
+        return result
+            .filter { it.url.startsWith("http://") || it.url.startsWith("https://") }
+            .distinctBy { it.url }
             .sortedBy { it.number }
     }
 }
