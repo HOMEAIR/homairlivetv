@@ -19,9 +19,12 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v5
-      - run: gradle assembleDebug
+      - name: Build debug APK
+        env:
+          HOME_AIR_PROXY_URL: https://livo.hmairtv.workers.dev/
+          HOME_AIR_APP_SECRET: ${{ secrets.HOME_AIR_APP_SECRET }}
+        run: gradle assembleDebug
       - run: gradle test
-
       - name: Upload debug APK
         uses: actions/upload-artifact@v7
         with:
