@@ -34,6 +34,7 @@ import com.homeair.live.data.Channel
 import com.homeair.live.playback.PlaybackFactory
 
 class MainActivity : ComponentActivity() {
+    private lateinit var homeAirVm: HomeAirViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
