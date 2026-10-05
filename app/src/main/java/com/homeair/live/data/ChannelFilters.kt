@@ -14,8 +14,13 @@ object ChannelFilters {
     ): List<Channel> {
         val normalizedQuery = query.trim()
         return channels.asSequence()
-            .filter { group == "All" || (if (it.group.isBlank()) "Live" else it.group) == group }
-            .filter { favorites.isEmpty() || group != "Favorites" || it.id in favorites }
+            .filter { channel ->
+                when {
+                    group == "All" -> true
+                    group == "Favorites" -> channel.id in favorites
+                    else -> (channel.group.trim().ifBlank { "Live" }) == group
+                }
+            }
             .filter {
                 normalizedQuery.isBlank() ||
                     it.name.contains(normalizedQuery, ignoreCase = true) ||
