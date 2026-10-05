@@ -291,12 +291,15 @@ fun ChannelSidebar(
 fun MobileScreen(
     channels: List<Channel>,
     current: Int,
+    favorites: Set<String>,
     token: String,
     tokenHeader: String,
     error: String?,
     onSelect: (Int) -> Unit,
     onMode: (String) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onSettings: () -> Unit,
+    onFavorite: (String) -> Unit
 ) {
     var showPlayer by remember { mutableStateOf(false) }
     var dragTotal by remember { mutableFloatStateOf(0f) }
