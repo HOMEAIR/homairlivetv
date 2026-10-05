@@ -48,6 +48,7 @@ fun HomeAirLiveApp(vm: HomeAirViewModel = viewModel()) {
     val error by vm.playlistError.collectAsState()
     val token by vm.token.collectAsState()
     val tokenHeader by vm.tokenHeader.collectAsState()
+    val playlistUrl by vm.playlistUrl.collectAsState()
     var selected by remember { mutableIntStateOf(0) }
     var showSettings by remember { mutableStateOf(false) }
 
@@ -81,19 +82,38 @@ fun HomeAirLiveApp(vm: HomeAirViewModel = viewModel()) {
             onSettings = { showSettings = true }
         )
     }
-    if (showSettings) SettingsDialog(tokenHeader, token) { url, header, newToken -> vm.savePlaylist(url, header, newToken); showSettings = false }
+    if (showSettings) SettingsDialog(playlistUrl, tokenHeader, token, onSave = { url, header, newToken -> vm.savePlaylist(url, header, newToken); showSettings = false }, onCancel = { showSettings = false })
     }
 }
 
 @Composable
 fun BrandLogo(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "home_air_logo")
+    val triangleRotation by transition.animateFloat(0f, 360f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(2200), androidx.compose.animation.core.RepeatMode.Restart), label = "triangle")
+    val signalRotation by transition.animateFloat(0f, -360f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1500), androidx.compose.animation.core.RepeatMode.Restart), label = "signal")
     Box(
-        modifier = modifier
-            .background(Color(0xFFFF7A00), RoundedCornerShape(14.dp)),
+        modifier = modifier.background(Color(0xFFFF7A00), RoundedCornerShape(14.dp)),
         contentAlignment = Alignment.Center
     ) {
-        Text("▶", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Text("—", color = Color(0xFFFFD54A), fontSize = 26.sp, modifier = Modifier.offset(x = 19.dp))
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize().padding(10.dp)) {
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            val radius = size.minDimension * .30f
+            drawContext.canvas.save()
+            drawContext.canvas.rotate(triangleRotation, cx, cy)
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(cx + radius, cy)
+                lineTo(cx - radius * .7f, cy - radius * .85f)
+                lineTo(cx - radius * .7f, cy + radius * .85f)
+                close()
+            }
+            drawPath(path, color = Color.White)
+            drawContext.canvas.restore()
+            drawContext.canvas.save()
+            drawContext.canvas.rotate(signalRotation, cx, cy)
+            drawLine(Color(0xFFFFD54A), start = androidx.compose.ui.geometry.Offset(cx - radius * .95f, cy + radius * .65f), end = androidx.compose.ui.geometry.Offset(cx + radius * .95f, cy - radius * .65f), strokeWidth = size.minDimension * .055f)
+            drawContext.canvas.restore()
+        }
     }
 }
 
@@ -337,12 +357,12 @@ fun LiveVideoPlayer(channel: Channel, tokenHeader: String, token: String, modifi
 
 
 @Composable
-fun SettingsDialog(tokenHeader: String, token: String, onSave: (String, String, String) -> Unit) {
-    var url by remember { mutableStateOf("") }
-    var header by remember { mutableStateOf(tokenHeader) }
-    var newToken by remember { mutableStateOf(token) }
+fun SettingsDialog(playlistUrl: String, tokenHeader: String, token: String, onSave: (String, String, String) -> Unit, onCancel: () -> Unit) {
+    var url by remember(playlistUrl) { mutableStateOf(playlistUrl) }
+    var header by remember(tokenHeader) { mutableStateOf(tokenHeader) }
+    var newToken by remember(token) { mutableStateOf(token) }
     AlertDialog(
-        onDismissRequest = {},
+        onDismissRequest = onCancel,
         title = { Text("Streaming Settings") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -356,6 +376,6 @@ fun SettingsDialog(tokenHeader: String, token: String, onSave: (String, String, 
         confirmButton = {
             Button(onClick = { onSave(url.trim(), header.trim(), newToken) }) { Text("SAVE & LOAD") }
         },
-        dismissButton = {}
+        dismissButton = { TextButton(onClick = onCancel) { Text("CANCEL") } }
     )
 }
