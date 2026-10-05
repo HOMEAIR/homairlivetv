@@ -1,12 +1,12 @@
 package com.homeair.live.data
 
 private fun attribute(line: String, name: String): String? {
-    val regex = Regex("""$name\s*=\s*["']([^"']*)["']""".replace("\\\\", "\\"), RegexOption.IGNORE_CASE)
+    val regex = Regex("""$name\s*=\s*["']([^"']*)["']""", RegexOption.IGNORE_CASE)
     return regex.find(line)?.groupValues?.getOrNull(1)?.trim()?.ifBlank { null }
 }
 
 private fun channelNumber(line: String): Int? {
-    val regex = Regex("""(?:channel-number|tvg-chno)\s*=\s*["']?(\d+)["']?""".replace("\\\\", "\\"), RegexOption.IGNORE_CASE)
+    val regex = Regex("""(?:channel-number|tvg-chno)\s*=\s*["']?(\d+)["']?""", RegexOption.IGNORE_CASE)
     return regex.find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
 }
 
@@ -47,7 +47,6 @@ object M3uParser {
             metadataLine = null
             displayName = null
         }
-
         return result.distinctBy { it.url }.sortedBy { it.number }
     }
 }
