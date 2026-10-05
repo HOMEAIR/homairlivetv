@@ -8,9 +8,9 @@ import com.homeair.live.data.Channel
 import com.homeair.live.data.PlaylistRepository
 import com.homeair.live.security.SecureTokenStore
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
@@ -33,6 +33,12 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
     private val _tokenHeader = MutableStateFlow("Authorization: Bearer")
     val tokenHeader: StateFlow<String> = _tokenHeader.asStateFlow()
 
+    val favorites: StateFlow<Set<String>> = preferences.favorites.run {
+        MutableStateFlow(emptySet<String>()).also { target ->
+            viewModelScope.launch { collect { target.value = it } }
+        }.asStateFlow()
+    }
+
     init {
         viewModelScope.launch {
             _mode.value = preferences.mode.firstOrNull()
@@ -51,9 +57,17 @@ class HomeAirViewModel(app: Application) : AndroidViewModel(app) {
         _token.value = tokenStore.read()
         _tokenHeader.value = header.ifBlank { "Authorization: Bearer" }
         viewModelScope.launch {
-            preferences.setPlaylist(url.trim(), _tokenHeader.value)
+            preferences.setPlaylist(url, _tokenHeader.value)
             loadPlaylist()
         }
+    }
+
+    fun toggleFavorite(id: String) {
+        viewModelScope.launch { preferences.toggleFavorite(id) }
+    }
+
+    fun recordRecent(id: String) {
+        viewModelScope.launch { preferences.addRecent(id); preferences.setLastChannel(id) }
     }
 
     fun loadPlaylist() {
