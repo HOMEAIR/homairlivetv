@@ -1,19 +1,57 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+
+fun configValue(name: String, envName: String, defaultValue: String = ""): String {
+    return System.getenv(envName)
+        ?.takeIf { it.isNotBlank() }
+        ?: localProperties.getProperty(name)
+        ?: defaultValue
+}
+
+val homeAirProxyUrl = configValue(
+    "HOME_AIR_PROXY_URL",
+    "HOME_AIR_PROXY_URL",
+    "https://livo.hmairtv.workers.dev/"
+)
+
+val homeAirAppSecret = configValue(
+    "HOME_AIR_APP_SECRET",
+    "HOME_AIR_APP_SECRET"
+)
+
 android {
-    namespace="com.homeair.live"
-    compileSdk=37
+    namespace = "com.homeair.live"
+    compileSdk = 37
     defaultConfig {
-        applicationId="com.homeair.live"
-        minSdk=23
-        targetSdk=37
-        versionCode=1
-        versionName="1.0.0"
+        applicationId = "com.homeair.live"
+        minSdk = 23
+        targetSdk = 37
+        versionCode = 1
+        versionName = "1.0.0"
     }
-    buildFeatures { compose=true }
-    compileOptions { sourceCompatibility=JavaVersion.VERSION_17; targetCompatibility=JavaVersion.VERSION_17 }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    defaultConfig {
+        buildConfigField("String", "HOME_AIR_PROXY_URL", ""$homeAirProxyUrl"")
+        buildConfigField("String", "HOME_AIR_APP_SECRET", ""$homeAirAppSecret"")
+    }
 
     val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
     signingConfigs {
@@ -33,6 +71,7 @@ android {
         }
     }
 }
+
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.activity:activity-compose:1.12.2")
@@ -43,6 +82,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation("androidx.datastore:datastore-preferences:1.2.0")
+    implementation("com.squareup.okhttp3:okhttp:5.3.2")
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
     implementation("androidx.media3:media3-exoplayer-dash:1.11.1")
