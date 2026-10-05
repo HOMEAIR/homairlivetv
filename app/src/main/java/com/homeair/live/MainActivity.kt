@@ -13,6 +13,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.ui.viewinterop.AndroidView
+import android.widget.FrameLayout
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +69,7 @@ class MainActivity:ComponentActivity(){
    KeyEvent.KEYCODE_ENTER,KeyEvent.KEYCODE_DPAD_CENTER->{val n=number.toIntOrNull();val idx=channels.indexOfFirst{it.number==n};if(idx>=0)onSelect(idx);number="";true};else->false
   }
  }.focusRequester(focus).focusable()){
+  LiveVideoPlayer(channels[current].url, Modifier.fillMaxSize())
   Text("LIVE  "+channels[current].name,color=Color.White,fontSize=20.sp,modifier=Modifier.align(Alignment.TopStart).padding(24.dp));Text(channels[current].name,color=Color.White,fontSize=28.sp,fontWeight=FontWeight.Bold,modifier=Modifier.align(Alignment.BottomStart).padding(28.dp))
   if(number.isNotEmpty())Text(number,color=Color.White,fontSize=42.sp,fontWeight=FontWeight.Bold,modifier=Modifier.align(Alignment.Center));if(sidebar)ChannelSidebar(channels,current){onSelect(it);sidebar=false}
  }
@@ -76,4 +82,22 @@ class MainActivity:ComponentActivity(){
  var showPlayer by remember{mutableStateOf(false)}
  if(showPlayer)Box(Modifier.fillMaxSize().background(Color.Black)){Text("LIVE  "+channels[current].name,color=Color.White,fontSize=22.sp,modifier=Modifier.align(Alignment.TopStart).padding(20.dp));Text("Swipe up/down to change channel",color=Color.White,modifier=Modifier.align(Alignment.BottomCenter).padding(24.dp))}
  else Column(Modifier.fillMaxSize().background(Color(0xFF0E0E10)).padding(20.dp)){Row(verticalAlignment=Alignment.CenterVertically){BrandLogo(Modifier.size(52.dp));Spacer(Modifier.width(12.dp));Text("Home Air Live",color=Color.White,fontSize=27.sp,fontWeight=FontWeight.Bold)};Spacer(Modifier.height(24.dp));Text("Live TV",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Bold);Spacer(Modifier.height(12.dp));LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp)){items(channels){c->Card(Modifier.fillMaxWidth().clickable{onSelect(channels.indexOf(c));showPlayer=true}){Text(c.number.toString()+"  "+c.name,Modifier.padding(20.dp),fontSize=18.sp)}}}}
+}
+
+
+@Composable
+fun LiveVideoPlayer(url:String, modifier:Modifier=Modifier){
+ AndroidView(modifier=modifier, factory={context->
+  PlayerView(context).apply{
+   useController=false
+   player=ExoPlayer.Builder(context).build().also{p->
+    p.setMediaItem(MediaItem.fromUri(url))
+    p.prepare()
+    p.playWhenReady=true
+   }
+  }
+ }, update={view->view.player?.let{p->
+   val current=p.currentMediaItem?.localConfiguration?.uri?.toString()
+   if(current!=url){p.setMediaItem(MediaItem.fromUri(url));p.prepare();p.playWhenReady=true}
+ }})
 }
