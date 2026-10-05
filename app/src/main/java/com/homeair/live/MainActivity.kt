@@ -49,11 +49,16 @@ fun HomeAirLiveApp(vm: HomeAirViewModel = viewModel()) {
     val token by vm.token.collectAsState()
     val tokenHeader by vm.tokenHeader.collectAsState()
     val playlistUrl by vm.playlistUrl.collectAsState()
+    val favorites by vm.favorites.collectAsState()
+    val lastChannelId by vm.lastChannelId.collectAsState()
     var selected by remember { mutableIntStateOf(0) }
     var showSettings by remember { mutableStateOf(false) }
 
-    LaunchedEffect(channels) {
-        if (channels.isNotEmpty()) selected = selected.coerceIn(0, channels.lastIndex)
+    LaunchedEffect(channels, lastChannelId) {
+        if (channels.isNotEmpty()) {
+            val restored = channels.indexOfFirst { it.id == lastChannelId }
+            selected = if (restored >= 0) restored else selected.coerceIn(0, channels.lastIndex)
+        }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -62,24 +67,28 @@ fun HomeAirLiveApp(vm: HomeAirViewModel = viewModel()) {
         mode == "TV" -> TvScreen(
             channels = channels,
             current = selected,
+            favorites = favorites,
             token = token,
             tokenHeader = tokenHeader,
             error = error,
-            onSelect = { selected = it },
+            onSelect = { selected = it; channels.getOrNull(it)?.let { channel -> vm.recordRecent(channel.id) } },
             onMode = { vm.chooseMode(it) },
             onRefresh = vm::loadPlaylist,
-            onSettings = { showSettings = true }
+            onSettings = { showSettings = true },
+            onFavorite = vm::toggleFavorite
         )
         else -> MobileScreen(
             channels = channels,
             current = selected,
+            favorites = favorites,
             token = token,
             tokenHeader = tokenHeader,
             error = error,
-            onSelect = { selected = it },
+            onSelect = { selected = it; channels.getOrNull(it)?.let { channel -> vm.recordRecent(channel.id) } },
             onMode = { vm.chooseMode(it) },
             onRefresh = vm::loadPlaylist,
-            onSettings = { showSettings = true }
+            onSettings = { showSettings = true },
+            onFavorite = vm::toggleFavorite
         )
     }
     if (showSettings) SettingsDialog(playlistUrl, tokenHeader, token, onSave = { url, header, newToken -> vm.savePlaylist(url, header, newToken); showSettings = false }, onCancel = { showSettings = false })
@@ -156,13 +165,15 @@ fun ModeCard(title: String, subtitle: String, onChoose: (String) -> Unit) {
 fun TvScreen(
     channels: List<Channel>,
     current: Int,
+    favorites: Set<String>,
     token: String,
     tokenHeader: String,
     error: String?,
     onSelect: (Int) -> Unit,
     onMode: (String) -> Unit,
     onRefresh: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onFavorite: (String) -> Unit
 ) {
     var sidebar by remember { mutableStateOf(false) }
     var number by remember { mutableStateOf("") }
@@ -212,7 +223,7 @@ fun TvScreen(
             }
         }
         if (sidebar) {
-            ChannelSidebar(channels, current, onSelect = { onSelect(it); sidebar = false }, onRefresh = onRefresh, onMode = { onMode("MOBILE") }, onSettings = onSettings)
+            ChannelSidebar(channels, current, favorites, onSelect = { onSelect(it); sidebar = false }, onRefresh = onRefresh, onMode = { onMode("MOBILE") }, onSettings = onSettings, onFavorite = onFavorite)
         }
     }
     LaunchedEffect(Unit) { focus.requestFocus() }
@@ -234,10 +245,12 @@ fun EmptyTvState(error: String?, onRefresh: () -> Unit) {
 fun ChannelSidebar(
     channels: List<Channel>,
     current: Int,
+    favorites: Set<String>,
     onSelect: (Int) -> Unit,
     onRefresh: () -> Unit,
     onMode: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onFavorite: (String) -> Unit
 ) {
     Surface(Modifier.fillMaxHeight().width(400.dp), color = Color(0xF218181A)) {
         Column(Modifier.padding(18.dp)) {
@@ -259,7 +272,8 @@ fun ChannelSidebar(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(c.number.toString(), color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.width(48.dp))
-                        Text(c.name, color = Color.White, fontSize = 18.sp)
+                        Text(c.name, color = Color.White, fontSize = 18.sp, modifier = Modifier.weight(1f))
+                        Text(if (c.id in favorites) "★" else "☆", color = Color.White, fontSize = 22.sp, modifier = Modifier.clickable { onFavorite(c.id) })
                     }
                 }
             }
@@ -325,7 +339,10 @@ fun MobileScreen(
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(channels, key = { it.id }) { c ->
                     Card(Modifier.fillMaxWidth().clickable { onSelect(channels.indexOf(c)); showPlayer = true }) {
-                        Text(c.number.toString() + "  " + c.name, Modifier.padding(20.dp), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                        Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(c.number.toString() + "  " + c.name, Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                            Text(if (c.id in favorites) "★" else "☆", fontSize = 22.sp, modifier = Modifier.clickable { onFavorite(c.id) })
+                        }
                     }
                 }
             }
