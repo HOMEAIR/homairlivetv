@@ -49,11 +49,13 @@ fun HomeAirLiveApp(vm: HomeAirViewModel = viewModel()) {
     val token by vm.token.collectAsState()
     val tokenHeader by vm.tokenHeader.collectAsState()
     var selected by remember { mutableIntStateOf(0) }
+    var showSettings by remember { mutableStateOf(false) }
 
     LaunchedEffect(channels) {
         if (channels.isNotEmpty()) selected = selected.coerceIn(0, channels.lastIndex)
     }
 
+    Box(Modifier.fillMaxSize()) {
     when {
         mode == null -> ModeChooser { vm.chooseMode(it) }
         mode == "TV" -> TvScreen(
@@ -64,7 +66,8 @@ fun HomeAirLiveApp(vm: HomeAirViewModel = viewModel()) {
             error = error,
             onSelect = { selected = it },
             onMode = { vm.chooseMode(it) },
-            onRefresh = vm::loadPlaylist
+            onRefresh = vm::loadPlaylist,
+            onSettings = { showSettings = true }
         )
         else -> MobileScreen(
             channels = channels,
@@ -74,8 +77,11 @@ fun HomeAirLiveApp(vm: HomeAirViewModel = viewModel()) {
             error = error,
             onSelect = { selected = it },
             onMode = { vm.chooseMode(it) },
-            onRefresh = vm::loadPlaylist
+            onRefresh = vm::loadPlaylist,
+            onSettings = { showSettings = true }
         )
+    }
+    if (showSettings) SettingsDialog(tokenHeader, token) { url, header, newToken -> vm.savePlaylist(url, header, newToken); showSettings = false }
     }
 }
 
@@ -135,7 +141,8 @@ fun TvScreen(
     error: String?,
     onSelect: (Int) -> Unit,
     onMode: (String) -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onSettings: () -> Unit
 ) {
     var sidebar by remember { mutableStateOf(false) }
     var number by remember { mutableStateOf("") }
@@ -209,7 +216,8 @@ fun ChannelSidebar(
     current: Int,
     onSelect: (Int) -> Unit,
     onRefresh: () -> Unit,
-    onMode: () -> Unit
+    onMode: () -> Unit,
+    onSettings: () -> Unit
 ) {
     Surface(Modifier.fillMaxHeight().width(400.dp), color = Color(0xF218181A)) {
         Column(Modifier.padding(18.dp)) {
@@ -237,7 +245,10 @@ fun ChannelSidebar(
             }
             Spacer(Modifier.height(10.dp))
             OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) { Text("REFRESH PLAYLIST") }
-            TextButton(onClick = onMode) { Text("MOBILE MODE") }
+            Row {
+                TextButton(onClick = onSettings) { Text("SETTINGS") }
+                TextButton(onClick = onMode) { Text("MOBILE MODE") }
+            }
         }
     }
 }
@@ -301,6 +312,7 @@ fun MobileScreen(
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = onRefresh) { Text("REFRESH") }
+                OutlinedButton(onClick = onSettings) { Text("SETTINGS") }
                 OutlinedButton(onClick = { onMode("TV") }) { Text("TV MODE") }
             }
         }
@@ -320,5 +332,30 @@ fun LiveVideoPlayer(channel: Channel, tokenHeader: String, token: String, modifi
         modifier = modifier,
         factory = { PlayerView(it).apply { useController = false } },
         update = { it.player = player }
+    )
+}
+
+
+@Composable
+fun SettingsDialog(tokenHeader: String, token: String, onSave: (String, String, String) -> Unit) {
+    var url by remember { mutableStateOf("") }
+    var header by remember { mutableStateOf(tokenHeader) }
+    var newToken by remember { mutableStateOf(token) }
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("Streaming Settings") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(url, { url = it }, label = { Text("M3U playlist URL") }, singleLine = true)
+                OutlinedTextField(header, { header = it }, label = { Text("Auth header format") }, singleLine = true)
+                OutlinedTextField(newToken, { newToken = it }, label = { Text("Access token") }, singleLine = true)
+                Text("Example header: Authorization: Bearer", fontSize = 12.sp, color = Color.Gray)
+                Text("Token is stored using Android Keystore. Prefer short-lived tokens.", fontSize = 12.sp, color = Color.Gray)
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onSave(url.trim(), header.trim(), newToken) }) { Text("SAVE & LOAD") }
+        },
+        dismissButton = {}
     )
 }
