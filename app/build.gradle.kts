@@ -49,8 +49,8 @@ android {
     }
 
     defaultConfig {
-        buildConfigField("String", "HOME_AIR_PROXY_URL", ""$homeAirProxyUrl"")
-        buildConfigField("String", "HOME_AIR_APP_SECRET", ""$homeAirAppSecret"")
+        buildConfigField("String", "HOME_AIR_PROXY_URL", "\"$homeAirProxyUrl\"")
+        buildConfigField("String", "HOME_AIR_APP_SECRET", "\"$homeAirAppSecret\"")
     }
 
     val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
