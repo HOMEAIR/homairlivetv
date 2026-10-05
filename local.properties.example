@@ -1,3 +1,6 @@
-# Copy this to local.properties only for local development if needed.
-# Never commit real tokens or private URLs.
+# Android SDK path for local builds
 sdk.dir=/path/to/Android/Sdk
+
+# Home Air Live Cloudflare Worker configuration
+HOME_AIR_PROXY_URL=https://livo.hmairtv.workers.dev/
+HOME_AIR_APP_SECRET=YOUR_WORKER_SECRET
