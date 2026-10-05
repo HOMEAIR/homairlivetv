@@ -1,0 +1,3 @@
+# Copy this to local.properties only for local development if needed.
+# Never commit real tokens or private URLs.
+sdk.dir=/path/to/Android/Sdk
