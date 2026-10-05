@@ -1,8 +1,13 @@
 package com.homeair.live.data
 
 private fun attribute(line: String, name: String): String? {
-    val regex = Regex(name + "=\\\"([^\\\"]*)\\\"", RegexOption.IGNORE_CASE)
-    return regex.find(line)?.groupValues?.getOrNull(1)?.ifBlank { null }
+    val regex = Regex("""$name\\s*=\\s*["']([^"']*)["']""", RegexOption.IGNORE_CASE)
+    return regex.find(line)?.groupValues?.getOrNull(1)?.trim()?.ifBlank { null }
+}
+
+private fun channelNumber(line: String): Int? {
+    val regex = Regex("""(?:channel-number|tvg-chno)\\s*=\\s*["']?(\\d+)["']?""", RegexOption.IGNORE_CASE)
+    return regex.find(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
 }
 
 object M3uParser {
@@ -19,13 +24,11 @@ object M3uParser {
                 displayName = line.substringAfter(',', "").trim().ifBlank { null }
                 continue
             }
-
             if (line.isEmpty() || line.startsWith("#")) continue
+
             if (metadataLine != null && (line.startsWith("http://") || line.startsWith("https://"))) {
                 val metadata = metadataLine!!
-                val number = attribute(metadata, "channel-number")?.toIntOrNull()
-                    ?: attribute(metadata, "tvg-chno")?.toIntOrNull()
-                    ?: generated
+                val number = channelNumber(metadata) ?: generated
                 val name = attribute(metadata, "tvg-name") ?: displayName ?: "Channel $generated"
                 result += Channel(
                     number = number,
