@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.media3.ui.PlayerView
 import com.homeair.live.data.Channel
 import com.homeair.live.playback.PlaybackFactory
@@ -116,8 +117,8 @@ fun BrandLogo(modifier: Modifier = Modifier) {
                 lineTo(cx - radius * .7f, cy + radius * .85f)
                 close()
             }
-            androidx.compose.ui.graphics.drawscope.rotate(triangleRotation, androidx.compose.ui.geometry.Offset(cx, cy)) { drawPath(path, color = Color.White) }
-            androidx.compose.ui.graphics.drawscope.rotate(signalRotation, androidx.compose.ui.geometry.Offset(cx, cy)) {
+            rotate(triangleRotation, pivot = androidx.compose.ui.geometry.Offset(cx, cy)) { drawPath(path, color = Color.White) }
+            rotate(signalRotation, pivot = androidx.compose.ui.geometry.Offset(cx, cy)) {
                 drawLine(Color(0xFFFFD54A), start = androidx.compose.ui.geometry.Offset(cx - radius * .95f, cy + radius * .65f), end = androidx.compose.ui.geometry.Offset(cx + radius * .95f, cy - radius * .65f), strokeWidth = size.minDimension * .055f)
             }
         }
